@@ -1,8 +1,27 @@
-## Bayesian Estimate of PS paramters from  LR curves ###
+## Bayesian Estimate of chlorophyll fluorescence paramters from  LR curves ###
+# R 3.2.1
+# 05_31_2017. Jonathan R Plean.
+# fixed to estimate with only low light portion of the curve (> 250 PARi)
+# Reviewed by: No one
 
-###   Chris Mure Amaranthus tricolor #####
+### Script depends on fluorescence Light Responce Model  see Yin(2009) PCE for model details
+# RdPhill_Ind_model.R   quadratic function often using including in Text: Plant Physiological Ecology (Lamber, 2008) 
+# model estimates s1 (lumped parameter described in Yin(2009) PCE))
+# mphi (lowlight slope parameter described in Yin(2009) PCE))
+# Rd (respiration rate Dark, y intercept)
+# phi2ll  (quantum yield based on fluorescence, initial slope)
 
-setwd("~/Desktop/C_Mure_data/")   ### Change 4 server
+
+# Species Amaranthus tricolor  
+# Tri_Tri are Tricolor plant exhibiting tricolor behavior (green,yellow, red)
+# Tri are Tricolor plant not displaying tricolor beahvri (green and yellow only)
+# HYP are Amaranthus genotype which exhbitis only green leaves
+
+# Sources: collaborator Chris Mure & James Berry
+#   UB Biology 
+
+
+setwd("/Volumes/My Passport for Mac/C_Mure_data") ### Change 4 server
 
 ### package for Bayesian Sampleing
 library("rjags", lib.loc="/Library/Frameworks/R.framework/Versions/3.1/Resources/library") ### Change 4 server
@@ -24,12 +43,15 @@ nPerChain = ceiling( ( numSavedSteps * thinSteps ) / nChains ) # Steps per chain
 
 
 ######  load data
-library(data.table)
-## data from two measuremnts days (7_28_16 and 8_04_16) compiled into CM_tricolor_data_clean_08_12_16.txt
-LR_1 <- read.delim("CMure_tricolor_clean_compiled_data_092816.txt",sep="\t", header=TRUE)
 
-### data 7_28-16 Tri Base REd curve has min value of -13 and two poor data points
-## consider redoing that curve
+## data from all measuremnts days (7_28_16 and 9_29_16) compiled into CMure_tricolor_clean_compiled_data_093016_clean
+LR <- read.delim("CMure_tricolor_clean_compiled_data_093016_clean.txt",sep="\t", header=TRUE)
+#   LR_1 removes curve for ID 13 after CM and JRP evaluated data on 11-16-19
+LR_1<-LR[LR$ID!="13",]
+
+### clean version has ID 3 and 15 removed
+### ID 3   Tri Base Red curve has min value of -13 
+###  ID 15 has high variance at light level > 500
 
 
 names(LR_1)
@@ -39,28 +61,18 @@ IGT<-unique(LR_1[,2:6][c("Date","Plant", "Leaf_Section", "Color", "ID")])
 Plant<-IGT$Plant; Leaf_Section<-IGT$Leaf_Section;Color<-IGT$Color; IDs<-IGT$ID; N<-length(IDs)
 Date<-IGT$Date
 
-###  FOR Plotting Raw data 
-### PARi rounded to produce mean values for Plant types
-LR_1$PARi_grp<-(round(LR_1$PARi, -1))
-###  Plant group, combination of Species, Sectino and color
-LR_1$Plant_grp<-paste(LR_1$Plant, LR_1$Leaf_Section,LR_1$Color, sep='_')
-#### mean values based on plant/leaf type and PARi_group
-LR_means<-aggregate(Photo ~ PARi_grp * Plant_grp, data=LR_1, FUN=mean)
-LR_means$SD<-aggregate(Photo ~ PARi_grp * Plant_grp, data=LR_1, FUN=sd)[,3]
-
-
-
-datalist<-vector("list", N)
-for(j in 1:N){
-  datalist[[j]]<-list(N_ll=length(LR_1[LR_1$ID==IDs[j],]$PARi),
-                         A_ll=c(LR_1[LR_1$ID==IDs[j],]$Photo), Inc_ll=c(LR_1[LR_1$ID==IDs[j],]$PARi),
-                         phi2_ll=c(LR_1[LR_1$ID==IDs[j],]$PhiPS2))
+LR_low<-LR_1[LR_1$PARi<=400,]
+hist(LR_low$PARi)
+datalist<-vector("list", 7)
+for(j in 1:21){
+  datalist[[j]]<-list(N=length(LR_low[LR_low$ID==IDs[j],]$PARi), N_ll=length(LR_low[LR_low$ID==IDs[j],]$PARi),
+                      A_ll=c(LR_low[LR_low$ID==IDs[j],]$Photo) , Inc_ll=c(LR_low[LR_low$ID==IDs[j],]$PARi) ,phi2_ll=c(LR_low[LR_low$ID==IDs[j],]$PhiPS2))
 }
-
+datalist[[3]]
 
 ### establishing all models & doing burn in
-models<-vector("list", N)
-for(j in 1:N){
+models<-vector("list", 21)
+for(j in 1:21){
 models[[j]] <- jags.model(textConnection(RdPhi2ll_mod), 
                      data = datalist[[j]], n.chains=nChains , n.adapt=adaptSteps)
       update(models[[j]], burnInSteps)
@@ -85,16 +97,62 @@ mcmcChain<-vector("list", N); sigma_Rd<-vector("list", N);  sigma_phi2<-vector("
     mcmcChain[[i]] = as.data.frame(cbind( mcmcChain[[i]], sigma_Rd[[i]], sigma_phi2[[i]] ))
   }
 
+plot(mcmcsamples[[16]])
+gelman.diag(mcmcsamples[[6]])
+
+names(mcmcChain) <- paste(IGT$Plant, IGT$Leaf_Section,IGT$Color,IGT$ID, sep='_')
+IGT$Rec<- paste(IGT$Plant, IGT$Leaf_Section,IGT$Color,IGT$ID, sep='_')
+
 ##### pull out medain values estimates and write to file
 meds<-matrix(, nrow = N, ncol = 8)
 for(j in 1:N){
 meds[j,]<- apply(mcmcChain[[j]], 2, median)
 }
-Medians<-cbind(IGT[,1:3], meds)
-colnames(Medians)<-c( "Date", "Plant", "Leaf_Section", "Color" ,"ID", "Rd", "mphi","phi2ll", "s1",  "tau_Rd", "tau_phi",
+Medians_CF<-cbind(IGT[,1:5], meds)
+colnames(Medians_CF)<-c( "Date", "Plant", "Leaf_Section", "Color" ,"ID", "Rd_CF", "mphi","phi2ll", "s1",  "tau_Rd", "tau_phi",
                      "sigma_Rd",  "sigma_phi")
 ### write table for Median values
 
-write.table(Medians, "medians_LR_Chl_flo_trait_estimates_tricolor_09_26_16.txt", sep="\t", col.name=TRUE,row.names=FALSE)
+write.table(Medians_CF, "medians_LR_Chl_flo_trait_estimates_tricolor_05_31_17.txt", sep="\t", col.name=TRUE,row.names=FALSE)
+
+
+
+### save mcmcChains for later analysis as individual files
+setwd("/Volumes/My Passport for Mac/C_Mure_data/mcmc_data_CF")
+
+for(k in 1:N){
+  write.table( mcmcChain[[k]], c(IGT$Rec[k]), sep="\t", col.name=TRUE,row.names=FALSE )
+}
+
+
+
+######  95% CI's based on pooled MCMC samples
+
+source("/Volumes/My Passport for Mac/ProgramsDoingBayesianDataAnalysis-2/HDIofMCMC.R")
+
+
+### leaf section-level posterior distributions
+Ahy_b<-rbind(mcmcChain[[1]],mcmcChain[[2]],mcmcChain[[3]])
+Ahy_t<-rbind(mcmcChain[[4]],mcmcChain[[5]],mcmcChain[[6]])
+At_b<-rbind(mcmcChain[[7]],mcmcChain[[8]],mcmcChain[[9]])
+At_t<-rbind(mcmcChain[[10]],mcmcChain[[11]],mcmcChain[[12]])
+Att_br<-rbind(mcmcChain[[13]],mcmcChain[[14]],mcmcChain[[15]])
+Att_my<-rbind(mcmcChain[[16]],mcmcChain[[17]],mcmcChain[[18]])
+Att_tg<-rbind(mcmcChain[[19]],mcmcChain[[20]],mcmcChain[[21]])
+###   60% HDR for each geno
+l1<-apply(Ahy_b,2 ,HDIofMCMC)
+l2<-apply(Ahy_t,2 ,HDIofMCMC) 
+l3<-apply(At_b,2 ,HDIofMCMC) 
+l4<-apply(At_t,2 ,HDIofMCMC) 
+l5<-apply(Att_br,2 ,HDIofMCMC) 
+l6<-apply(Att_my,2 ,HDIofMCMC) 
+l7<-apply(Att_tg,2 ,HDIofMCMC) 
+
+
+CIs<-cbind(rep(c("Ahy_b", "Ahy_t", "At_b", "At_t", "Att_br", "Att_my", "Att_tg"), each=2),rbind(l1,l2,l3,l4,l5,l6,l7))
+
+write.table(CIs, "CIs_LR_Chl_flo_trait_estimates_tricolor_05_31_17.txt", sep="\t", col.name=TRUE,row.names=FALSE)
+
+
 
 
