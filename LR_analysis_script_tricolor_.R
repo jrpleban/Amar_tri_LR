@@ -119,7 +119,7 @@ write.table( mcmcChain[[k]], c(IGT$Rec[k]), sep="\t", col.name=TRUE,row.names=FA
 }
 
 
-
+###   95% credible intervals using function from John K. Kruschke Doing Bayesian Data Analysis in R (2014)
 source("/Volumes/My Passport for Mac/ProgramsDoingBayesianDataAnalysis-2/HDIofMCMC.R")
 
 
