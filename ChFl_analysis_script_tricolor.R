@@ -126,8 +126,7 @@ for(k in 1:N){
 
 
 
-######  95% CI's based on pooled MCMC samples
-
+###   95% credible intervals using function from John K. Kruschke Doing Bayesian Data Analysis in R (2014)
 source("/Volumes/My Passport for Mac/ProgramsDoingBayesianDataAnalysis-2/HDIofMCMC.R")
 
 
