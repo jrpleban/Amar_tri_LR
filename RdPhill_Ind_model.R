@@ -1,6 +1,6 @@
 RdPhi2ll_mod <- "model
 {
-    for (j in 1:N_ll){
+    for (j in 1:N){
     A_ll[j] ~ dnorm( mu.A_ll[j] , tau_Rd )
     mu.A_ll[j] <- s1 * (Inc_ll[j]*phi2_ll[j])/4  - Rd25
 
@@ -13,10 +13,10 @@ for (k in 1:N_ll){
 
  
  
- Rd25 ~ dunif(1,5)
- s1 ~ dunif(.2,.7)
- phi2ll ~dunif(.1,.9)
- mphi ~ dunif(-1,1)
+ Rd25 ~ dunif(-2,5)
+ s1 ~ dunif(0,1)
+ phi2ll ~dunif(.01,.99)
+ mphi ~ dunif(-2,2)
 
  ### precision for Rd from low light
  tau_Rd ~ dgamma(.001 , .001)
