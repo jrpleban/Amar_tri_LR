@@ -1,3 +1,4 @@
+### HDI calculation function following the Puppy Book (John Kruschke 2015)
 HDIofMCMC = function( sampleVec , credMass=0.95 ) {
     # Computes highest density interval from a sample of representative values,
     #   estimated as shortest credible interval.
