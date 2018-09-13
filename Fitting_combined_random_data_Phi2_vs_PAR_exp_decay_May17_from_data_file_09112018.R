@@ -40,7 +40,7 @@ setwd("~/Desktop/Amaranth_MS/PhotosynQ_modeling_R")
 #write.csv(D,"UBdata_05_09_17_cleaned.csv")
 
 
-
+## LOADING Combined WY and UB datasets from Base MultispeQ protocol . ## Leaf Photosynthesis MultispeQ V1.0
 D1<-as.data.frame(read.csv("data/WY_MulitspeQ_base_protocol_cleaned_09022018.csv"))
 D1$PARi<-D1$Light.Intensity..PAR.
 D2<-as.data.frame(read.csv("data/UBdata_05_09_17_cleaned.csv"))
