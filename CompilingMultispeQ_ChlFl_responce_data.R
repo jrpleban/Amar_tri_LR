@@ -1,34 +1,32 @@
-### Photosynthesis Research using MultisynQ
+### Photosynthesis Research using MultispeQ
 ##  compiling data set
 # R 3.2.1
-# Updated: 08_25_2017. Jonathan R Pleban UB Geography  
-# Reviewed by: No one
+# Updated: 09_11_2018. Jonathan R Pleban UB Geography  
+# Reviewed by: No one yet
 
-### Script depends on  model called Phi2_decay_model_hier
-## currently a 1 level hierarchy can be set by genotypes, treatment  (WW, Dr, rewet), time point
+### This script compiles data from MultispeQ rapid light responce protocols
 ################################################
-# Developed using data from PhotosynQ project:
-#   A. tricolor leaf photosynthesis by leaf type and section
-# Hierarch based on leaf type and section 
-# Collaborators: L. Guadagno & B. Ewers U Wyoming Botany
+# 
+# Collaborators: J Berry and C Mure UB Biology
+#                 L. Guadagno & B. Ewers U Wyoming Botany
 #                 D.S Mackay UB Geography
 
 ###  packages used 
 require("stringr")
 require(plyr)
-require("coda")
-require("rjags")
 
 ## set as source directory
 setwd("~/Desktop/Amaranth_MS/PhotosynQ_modeling_R")
 
 ####  loading data from saved files 
+# load low light portion of curve
 P1 <- read.csv("data/Rapid_WY_0_125_raw.csv")
 names(P1)
 str(P1)
 ### duplicate each obs 5x and add PAR column
 P1p<-P1[rep(1:nrow(P1),each=5),] 
 P1p$PARi<-rep(c(0,15,30,60,125),435)
+# load high light portion of curve
 P2 <- read.csv("data/Rapid_WY_250_2000_raw.csv")
 names(P2)
 str(P2)
@@ -36,7 +34,7 @@ str(P2)
 P2p<-P2[rep(1:nrow(P2),each=5),] 
 P2p$PARi<-rep(c(250,500,1000, 1500,2000),435)
 
-
+## merge two sections of LR
 fastmerge <- function(d1, d2) {
   d1.names <- names(d1)
   d2.names <- names(d2)
@@ -70,6 +68,8 @@ P<-fastmerge(P1p, P2p)
 plot(P$PARi)
 names(P)
 
+
+## process variables of interest against PAR
 P$PHI2 <- ifelse(P$PARi == 0, P$Phi2_0,
                  ifelse(P$PARi == 15, P$Phi2_15,
                         ifelse(P$PARi == 30, P$Phi2_30,
